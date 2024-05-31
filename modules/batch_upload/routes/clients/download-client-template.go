@@ -69,5 +69,5 @@ func DownloadClientTemplate(c *fiber.Ctx) error {
 	if err := c.Download(excelFileName); err != nil {
 		return err
 	}
-	return c.Status(200).SendString("File downloaded successfully")
+	return c.Status(200).SendString(excelFileName)
 }
