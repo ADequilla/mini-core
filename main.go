@@ -36,7 +36,7 @@ func main() {
 		))
 	} else {
 		// Bind to all available IP addresses and the specified port
-		err := app.Listen(fmt.Sprintf("192.168.120.220:%s", middleware.GetEnv("PORT")))
+		err := app.Listen(fmt.Sprintf(":%s", middleware.GetEnv("PORT")))
 		if err != nil {
 			log.Fatal(err.Error())
 		}
