@@ -36,5 +36,6 @@ func SetupPrivateRoutes(app *fiber.App) {
 
 	v1Endpoint.Post("/approve-client", out.ApproveClients)
 	v1Endpoint.Post("/disapprove-client", out.DisapproveClients)
+	v1Endpoint.Post("/view-client-account", rout.ViewClientAccount)
 
 }
