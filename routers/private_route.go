@@ -3,6 +3,7 @@ package routers
 import (
 	"mini-core/middleware"
 	"mini-core/middleware/go-utils/database"
+	out "mini-core/modules/approve/routes"
 	accounts "mini-core/modules/batch_upload/routes/accounts"
 	clients "mini-core/modules/batch_upload/routes/clients"
 	rout "mini-core/modules/search/routes"
@@ -32,5 +33,8 @@ func SetupPrivateRoutes(app *fiber.App) {
 	v1Endpoint.Get("/get_account", routes.GetAccount)
 	v1Endpoint.Post("/update-account", route.UpdateAccount)
 	v1Endpoint.Post("/search-account", rout.SearchAccount)
+
+	v1Endpoint.Post("/approve-client", out.ApproveClients)
+	v1Endpoint.Post("/disapprove-client", out.DisapproveClients)
 
 }
