@@ -59,6 +59,13 @@ func LoginUser(c *fiber.Ctx) error {
 		})
 	}
 
+	if respbody.UserStatus != "Approved" {
+		return c.JSON(errors.ResponseModel{
+			RetCode: "400",
+			Message: "Contact System Administration for approval.",
+		})
+	}
+
 	// Check if the account is locked
 	if !respbody.LockoutTime.IsZero() && respbody.LockoutTime.After(time.Now()) {
 		return c.JSON(errors.ResponseModel{

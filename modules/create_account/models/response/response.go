@@ -31,3 +31,18 @@ type ResposBodyStruct struct {
 	MiddleName   string `json:"middleName"`
 	UserPosition string `json:"userPosition"`
 }
+
+type GetUserModel struct {
+	UserID         int64     `json:"user_id"`
+	UserName       string    `json:"user_name"`
+	UserEmail      string    `json:"user_email"`
+	UserPhone      string    `json:"user_phone"`
+	RegisteredDate time.Time `json:"registered_date"`
+	UserType       string    `json:"user_type"`
+	UserPosition   string    `json:"user_position"`
+	InstiCode      string    `json:"insti_code"`
+	InstiDesc      string    `json:"insti_desc"`
+	LastName       string    `json:"last_name"`
+	GivenName      string    `json:"given_name"`
+	MiddleName     string    `json:"middle_name"`
+}

@@ -42,4 +42,6 @@ func SetupPrivateRoutes(app *fiber.App) {
 	v1Endpoint.Post("/create-account", user.RegisterNewUser)
 	v1Endpoint.Post("/login-user", user.LoginUser)
 	v1Endpoint.Post("/logout-user", middleware.JWTMiddleware(), user.Logout)
+
+	v1Endpoint.Get("/get-registered-users", user.GetUsers)
 }
