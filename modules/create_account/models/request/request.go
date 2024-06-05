@@ -1,4 +1,4 @@
-package createaccount
+package request
 
 type RequestBodyStruct struct {
 	UserLogin    string `json:"userLogin,omitempty"`
@@ -7,6 +7,7 @@ type RequestBodyStruct struct {
 	UserEmail    string `json:"userEmail"`
 	UserPhone    string `json:"userPhone"`
 	InstiCode    string `json:"instiCode"`
+	UserType     string `json:"usertype"`
 	LastName     string `json:"lastName"`
 	GivenName    string `json:"givenName"`
 	MiddleName   string `json:"middleName"`

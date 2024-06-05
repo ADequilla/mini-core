@@ -1,11 +1,11 @@
-package middleware
+package routes
 
 import (
 	"mini-core/middleware/go-utils/database"
 	"mini-core/middleware/go-utils/passwordHashing"
-	"mini-core/modules/approve/models/errors"
-	"mini-core/modules/approve/models/response"
-	createaccount "mini-core/modules/create_account"
+	"mini-core/modules/create_account/models/errors"
+	"mini-core/modules/create_account/models/request"
+	"mini-core/modules/create_account/models/response"
 	"regexp"
 	"time"
 
@@ -15,11 +15,11 @@ import (
 func RegisterNewUser(c *fiber.Ctx) error {
 	currentTime := time.Now()
 	formatTime := currentTime.Format("2006-01-02 15:04:05")
-	reqBody := createaccount.RequestBodyStruct{}
-	respBody := createaccount.ResponseBodyStruct{}
+	reqBody := request.RequestBodyStruct{}
+	respBody := response.ResponseBodyStruct{}
 
 	if bodyErr := c.BodyParser(&reqBody); bodyErr != nil {
-		return c.JSON(response.ResponseModel{
+		return c.JSON(errors.ResponseModel{
 			RetCode: "400",
 			Message: "Body Parsing Failed",
 			Data: errors.ErrorModel{
@@ -31,9 +31,9 @@ func RegisterNewUser(c *fiber.Ctx) error {
 	}
 	reqBody.UserPhone = NormalizePhoneNumber(c, reqBody.UserPhone)
 	if len(reqBody.UserPhone) != 11 {
-		return c.JSON(response.ResponseModel{
+		return c.JSON(errors.ResponseModel{
 			RetCode: "400",
-			Message: "Bad Request",
+			Message: "BadRequest",
 			Data: errors.ErrorModel{
 				Message:   reqBody.UserPhone,
 				IsSuccess: false,
@@ -43,9 +43,9 @@ func RegisterNewUser(c *fiber.Ctx) error {
 	}
 	hashPassword, hashErr := passwordHashing.HashPassword(reqBody.UserPassword)
 	if hashErr != nil {
-		return c.JSON(response.ResponseModel{
+		return c.JSON(errors.ResponseModel{
 			RetCode: "400",
-			Message: "Bad Request",
+			Message: "BadRequest",
 			Data: errors.ErrorModel{
 				Message:   "Error: Failed to Harsh Password",
 				IsSuccess: false,
@@ -55,9 +55,9 @@ func RegisterNewUser(c *fiber.Ctx) error {
 	}
 	reqBody.UserName = ValidateUsername(reqBody.UserName)
 	if len(reqBody.UserName) == 0 {
-		return c.JSON(response.ResponseModel{
+		return c.JSON(errors.ResponseModel{
 			RetCode: "400",
-			Message: "Bad Request",
+			Message: "BadRequest",
 			Data: errors.ErrorModel{
 				Message:   "Error: Username is Empty",
 				IsSuccess: false,
@@ -66,7 +66,7 @@ func RegisterNewUser(c *fiber.Ctx) error {
 		})
 	}
 	if reqBody.UserName == "Username already exists" {
-		return c.JSON(response.ResponseModel{
+		return c.JSON(errors.ResponseModel{
 			RetCode: "400",
 			Message: "Bad Request",
 			Data: errors.ErrorModel{
@@ -75,11 +75,10 @@ func RegisterNewUser(c *fiber.Ctx) error {
 			},
 		})
 	}
-	roleInsti := GetRoleByInstiCode(reqBody.InstiCode)
-	typeInsti := GetTypeByInstiCode(reqBody.InstiCode)
+	role := GetRoleByInstiCode(reqBody.InstiCode, reqBody.UserType)
 
-	if insertErr := database.DBConn.Debug().Raw(`SELECT * FROM ewallet_web.func_insert_users(?,?,?,?,?,?,?,?,?,?,?,?)`, hashPassword, reqBody.UserName, reqBody.UserEmail, reqBody.UserPhone, formatTime, typeInsti, "Pending", roleInsti, reqBody.InstiCode, reqBody.LastName, reqBody.GivenName, reqBody.MiddleName).Scan(&respBody).Error; insertErr != nil {
-		return c.JSON(response.ResponseModel{
+	if insertErr := database.DBConn.Debug().Raw(`SELECT * FROM ewallet_web.func_insert_users(?,?,?,?,?,?,?,?,?,?,?,?)`, hashPassword, reqBody.UserName, reqBody.UserEmail, reqBody.UserPhone, formatTime, reqBody.UserType, "Pending", role, reqBody.InstiCode, reqBody.LastName, reqBody.GivenName, reqBody.MiddleName).Scan(&respBody).Error; insertErr != nil {
+		return c.JSON(errors.ResponseModel{
 			RetCode: "400",
 			Message: "Bad Request",
 			Data: errors.ErrorModel{
@@ -89,20 +88,20 @@ func RegisterNewUser(c *fiber.Ctx) error {
 			},
 		})
 	}
-	returnData := createaccount.ResponseBodyStruct{
-		UserName:    reqBody.UserName,
-		CreatedDate: formatTime,
-		UserEmail:   reqBody.UserEmail,
-		UserPasswd:  reqBody.UserPassword,
-		UserStatus:  "Pending",
-		Position:    roleInsti,
-		UserPhone:   reqBody.UserPhone,
-		InstiCode:   reqBody.InstiCode,
-		LastName:    reqBody.LastName,
-		GivenName:   reqBody.GivenName,
-		MiddleName:  reqBody.MiddleName,
+	returnData := response.ResponseBodyStruct{
+		UserName:     reqBody.UserName,
+		CreatedDate:  formatTime,
+		UserEmail:    reqBody.UserEmail,
+		UserPasswd:   reqBody.UserPassword,
+		UserStatus:   "Pending",
+		UserPosition: role,
+		UserPhone:    reqBody.UserPhone,
+		InstiCode:    reqBody.InstiCode,
+		LastName:     reqBody.LastName,
+		GivenName:    reqBody.GivenName,
+		MiddleName:   reqBody.MiddleName,
 	}
-	return c.JSON(response.ResponseModel{
+	return c.JSON(errors.ResponseModel{
 		RetCode: "201",
 		Message: "Success Created",
 		Data:    returnData,
@@ -160,34 +159,19 @@ func ValidateUsername(username string) string {
 }
 
 // Get insticode based on the user input
-func GetRoleByInstiCode(insticode string) string {
+func GetRoleByInstiCode(insticode string, usrtype string) string {
+	var role string
+
 	switch insticode {
 	case "001":
-		return "FDS-Admin"
-	case "002":
-		return "MFI-Admin"
+		role = "FDS"
 	default:
-		return "MFI-User"
+		role = "MFI"
 	}
-}
-
-func GetTypeByInstiCode(instiType string) string {
-	switch instiType {
-	case "2000":
-		return "Sample Insti"
-	case "1000":
-		return "EKYZ"
-	case "1001":
-		return "CAS"
-	case "501":
-		return "SMART"
-	case "5001":
-		return "NGO"
-	case "001":
-		return "FDSAP-ADMIN"
-	case "002":
-		return "FDSAP-STAFF"
+	switch usrtype {
+	case "Admin":
+		return role + "-ADMIN"
 	default:
-		return "User"
+		return role + "-USER"
 	}
 }

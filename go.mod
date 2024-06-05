@@ -7,6 +7,7 @@ require (
 	github.com/gofiber/fiber/v2 v2.52.4
 	github.com/gofiber/jwt/v2 v2.2.7
 	github.com/gofiber/jwt/v3 v3.3.10
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/joho/godotenv v1.5.1
 	github.com/xuri/excelize/v2 v2.8.1

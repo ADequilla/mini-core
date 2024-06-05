@@ -6,6 +6,7 @@ import (
 	out "mini-core/modules/approve/routes"
 	accounts "mini-core/modules/batch_upload/routes/accounts"
 	clients "mini-core/modules/batch_upload/routes/clients"
+	user "mini-core/modules/create_account/routes"
 	rout "mini-core/modules/search/routes"
 	routes "mini-core/modules/select/routes"
 	route "mini-core/modules/update/routes"
@@ -38,7 +39,7 @@ func SetupPrivateRoutes(app *fiber.App) {
 	v1Endpoint.Post("/disapprove-client", out.DisapproveClients)
 	v1Endpoint.Post("/view-client-account", rout.ViewClientAccount)
 
-	v1Endpoint.Post("/create-account", middleware.RegisterNewUser)
-	v1Endpoint.Post("/login-user", middleware.LoginUser)
-	v1Endpoint.Post("/logout-user", middleware.Logout)
+	v1Endpoint.Post("/create-account", user.RegisterNewUser)
+	v1Endpoint.Post("/login-user", user.LoginUser)
+	v1Endpoint.Post("/logout-user", middleware.JWTMiddleware(), user.Logout)
 }

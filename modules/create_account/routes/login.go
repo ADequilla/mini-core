@@ -1,4 +1,4 @@
-package middleware
+package routes
 
 import (
 	"fmt"
@@ -6,21 +6,31 @@ import (
 
 	"mini-core/middleware/go-utils/database"
 	"mini-core/middleware/go-utils/passwordHashing"
-	"mini-core/modules/approve/models/errors"
-	"mini-core/modules/approve/models/response"
-	createaccount "mini-core/modules/create_account"
+	"mini-core/modules/create_account/models/errors"
+	"mini-core/modules/create_account/models/request"
+	"mini-core/modules/create_account/models/response"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt"
 )
+
+func Getusertype(usrtype string) string {
+	switch usrtype {
+	case "MFI-ADMIN":
+		return "true"
+	default:
+		return "flase"
+	}
+}
 
 func LoginUser(c *fiber.Ctx) error {
 	currentTime := time.Now()
 	formatTime := currentTime.Format("2006-01-02 15:04:05")
-	reqbody := createaccount.RequestBodyStruct{}
-	respbody := createaccount.ResponseBodyStruct{}
+	reqbody := request.RequestBodyStruct{}
+	respbody := response.ResponseBodyStruct{}
 
 	if bodyErr := c.BodyParser(&reqbody); bodyErr != nil {
-		return c.JSON(response.ResponseModel{
+		return c.JSON(errors.ResponseModel{
 			RetCode: "400",
 			Message: "Bad Request",
 			Data: errors.ErrorModel{
@@ -32,7 +42,7 @@ func LoginUser(c *fiber.Ctx) error {
 	}
 
 	if getErr := database.DBConn.Debug().Raw(`SELECT * FROM ewallet_web.users WHERE user_name = ?`, reqbody.UserName).Scan(&respbody).Error; getErr != nil {
-		return c.JSON(response.ResponseModel{
+		return c.JSON(errors.ResponseModel{
 			RetCode: "400",
 			Message: "Bad Request",
 			Data: errors.ErrorModel{
@@ -43,7 +53,7 @@ func LoginUser(c *fiber.Ctx) error {
 		})
 	}
 	if respbody.IsLogin == "true" {
-		return c.JSON(response.ResponseModel{
+		return c.JSON(errors.ResponseModel{
 			RetCode: "400",
 			Message: "Already Login",
 		})
@@ -51,7 +61,7 @@ func LoginUser(c *fiber.Ctx) error {
 
 	// Check if the account is locked
 	if !respbody.LockoutTime.IsZero() && respbody.LockoutTime.After(time.Now()) {
-		return c.JSON(response.ResponseModel{
+		return c.JSON(errors.ResponseModel{
 			RetCode: "403",
 			Message: "Account is locked. Try again later.",
 			Data: errors.ErrorModel{
@@ -72,7 +82,7 @@ func LoginUser(c *fiber.Ctx) error {
 		}
 		database.DBConn.Debug().Exec(`UPDATE ewallet_web.users SET login_attempts = ? WHERE user_name = ?`, respbody.FailedAttempts, reqbody.UserName)
 
-		return c.JSON(response.ResponseModel{
+		return c.JSON(errors.ResponseModel{
 			RetCode: "401",
 			Message: "Unauthorized",
 			Data: errors.ErrorModel{
@@ -81,9 +91,38 @@ func LoginUser(c *fiber.Ctx) error {
 			},
 		})
 	}
+
+	adminclaims := Getusertype(respbody.UserPosition)
+
+	token := jwt.New(jwt.SigningMethodHS256)
+
+	claims := token.Claims.(jwt.MapClaims)
+	claims["identity"] = reqbody.UserName
+	claims["role"] = respbody.UserPosition
+	claims["admin"] = adminclaims
+	claims["exp_stat"] = false
+	claims["exp"] = time.Now().Add(time.Hour * 24).Unix()
+
+	t, err := token.SignedString([]byte("secret"))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Internal Server Error",
+		})
+	}
+
+	cookie := fiber.Cookie{
+		Name:     "jwt",
+		Value:    t,
+		Expires:  time.Now().Add(time.Hour * 24),
+		HTTPOnly: true,
+	}
+
+	c.Cookie(&cookie)
+
 	// Reset failed attempts on successful login
-	if updateErr := database.DBConn.Exec(`UPDATE ewallet_web.users SET login_attempts = 0,is_login = 'true',last_login_date = ? WHERE user_name = ?`, formatTime, reqbody.UserName).Error; updateErr != nil {
-		return c.JSON(response.ResponseModel{
+	if updateErr := database.DBConn.Exec(`UPDATE ewallet_web.users SET login_attempts = 0,is_login = 'true',last_login_date = ?, token = ? WHERE user_name = ?`, formatTime, t, reqbody.UserName).Error; updateErr != nil {
+		return c.JSON(errors.ResponseModel{
 			RetCode: "400",
 			Message: "Bad Request",
 			Data: errors.ErrorModel{
@@ -94,8 +133,21 @@ func LoginUser(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(response.ResponseModel{
+	returnData := response.ResposBodyStruct{
+		UserName:     respbody.UserName,
+		UserEmail:    respbody.UserEmail,
+		UserPosition: respbody.UserPosition,
+		UserPhone:    respbody.UserPhone,
+		InstiCode:    respbody.InstiCode,
+		LastName:     respbody.LastName,
+		GivenName:    respbody.GivenName,
+		MiddleName:   respbody.MiddleName,
+	}
+
+	return c.JSON(errors.LoginResponseModel{
 		RetCode: "201",
 		Message: "Login Successful",
+		Token:   t,
+		Data:    returnData,
 	})
 }
