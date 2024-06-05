@@ -111,7 +111,7 @@ func Logout(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(errors.ResponseModel{
+	return c.JSON(errors.LogoutResponseModel{
 		RetCode: "200",
 		Message: "Logout, Successful",
 	})

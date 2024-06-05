@@ -12,6 +12,11 @@ type ResponseModel struct {
 	Data    interface{} `json:"data"`
 }
 
+type LogoutResponseModel struct {
+	RetCode string `json:"retCode"`
+	Message string `json:"message"`
+}
+
 type LoginResponseModel struct {
 	RetCode string      `json:"retCode"`
 	Message string      `json:"message"`

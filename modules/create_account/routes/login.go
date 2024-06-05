@@ -98,6 +98,7 @@ func LoginUser(c *fiber.Ctx) error {
 
 	claims := token.Claims.(jwt.MapClaims)
 	claims["identity"] = reqbody.UserName
+	claims["insti"] = respbody.InstiCode
 	claims["role"] = respbody.UserPosition
 	claims["admin"] = adminclaims
 	claims["exp_stat"] = false
