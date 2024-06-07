@@ -12,6 +12,7 @@ import (
 	route "mini-core/modules/update/routes"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 )
 
 func SetupPrivateRoutes(app *fiber.App) {
@@ -20,8 +21,15 @@ func SetupPrivateRoutes(app *fiber.App) {
 	database.Data = database.Database{}
 	database.ConnectDB()
 
+	corsMiddleware := cors.New(cors.Config{
+		AllowMethods: "POST",
+		AllowOrigins: "*", // Allow all origins
+	})
+
 	ewalletweb := app.Group("/E-Wallet/Web")
 	v1Endpoint := ewalletweb.Group("/API")
+
+	v1Endpoint.Use(corsMiddleware)
 
 	v1Endpoint.Get("/download-client-template", clients.DownloadClientTemplate)
 	v1Endpoint.Post("/upload-client", clients.UploadClient)
