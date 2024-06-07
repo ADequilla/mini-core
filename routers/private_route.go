@@ -22,7 +22,7 @@ func SetupPrivateRoutes(app *fiber.App) {
 	database.ConnectDB()
 
 	corsMiddleware := cors.New(cors.Config{
-		AllowMethods: "POST",
+		AllowMethods: "GET",
 		AllowOrigins: "*", // Allow all origins
 	})
 
