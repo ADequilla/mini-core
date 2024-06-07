@@ -7,7 +7,6 @@ import (
 	"mini-core/routers"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 )
@@ -19,10 +18,10 @@ func main() {
 	app := fiber.New()
 	app.Use(recover.New())
 	// Configure application CORS
-	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowHeaders: "Access-Control-Allow-Origin",
-	}))
+	// app.Use(cors.New(cors.Config{
+	// 	AllowOrigins: "*",
+	// 	AllowHeaders: "Access-Control-Allow-Origin",
+	// }))
 
 	// Declare & initialize logger
 	app.Use(logger.New())
