@@ -12,7 +12,6 @@ import (
 	route "mini-core/modules/update/routes"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 )
 
 func SetupPrivateRoutes(app *fiber.App) {
@@ -21,38 +20,17 @@ func SetupPrivateRoutes(app *fiber.App) {
 	database.Data = database.Database{}
 	database.ConnectDB()
 
-	// CORS middleware with a more permissive configuration
-	corsMiddleware := cors.New(cors.Config{
-		AllowMethods: "GET,POST", // Allow GET and POST methods
-		AllowOrigins: "*",        // Allow all origins
-	})
-
 	ewalletweb := app.Group("/E-Wallet/Web")
 	v1Endpoint := ewalletweb.Group("/API")
 
-	// Apply general CORS middleware to the whole group
-	v1Endpoint.Use(corsMiddleware)
-
 	v1Endpoint.Get("/download-client-template", clients.DownloadClientTemplate)
-
-	// Use CORS middleware specifically for the /upload-client and /upload-account endpoints
-	v1Endpoint.Post("/upload-client", cors.New(cors.Config{
-		AllowMethods: "POST",
-		AllowOrigins: "*",
-	}), clients.UploadClient)
-
+	v1Endpoint.Post("/upload-client", clients.UploadClient)
 	v1Endpoint.Get("/get_client", routes.GetClient)
 	v1Endpoint.Post("/update-client", route.UpdateClient)
 	v1Endpoint.Post("/search-client", rout.SearchClient)
 
 	v1Endpoint.Get("/download-accounts-template", accounts.DownloadAccountsTemplate)
-
-	// Use CORS middleware specifically for the /upload-account endpoint
-	v1Endpoint.Post("/upload-account", cors.New(cors.Config{
-		AllowMethods: "POST",
-		AllowOrigins: "*",
-	}), accounts.UploadAccount)
-
+	v1Endpoint.Post("/upload-account", accounts.UploadAccount)
 	v1Endpoint.Get("/get_account", routes.GetAccount)
 	v1Endpoint.Post("/update-account", route.UpdateAccount)
 	v1Endpoint.Post("/search-account", rout.SearchAccount)
