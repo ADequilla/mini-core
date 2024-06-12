@@ -19,51 +19,95 @@ import (
 )
 
 func UploadClient(c *fiber.Ctx) error {
-	// Parse the multipart form file
 	file, err := c.FormFile("file")
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Failed to get file from request", "details": err.Error()})
 	}
 
-	// Save the uploaded file to a temporary location
 	tempPath := filepath.Join(os.TempDir(), file.Filename)
 	if err := c.SaveFile(file, tempPath); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-	}
-	// Compare headers with the downloaded file
-	if err := compareHeaders(tempPath); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save file", "details": err.Error()})
 	}
 
-	// Read the content of the uploaded file
+	if err := compareHeaders(tempPath); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Uploaded file headers do not match expected headers", "details": err.Error()})
+	}
+
 	clients, err := readExcelFile(tempPath)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to read Excel file", "details": err.Error()})
 	}
 
-	// Check if no data was found in the uploaded file
 	if len(clients) == 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "No data found in the uploaded file"})
 	}
 
-	// Insert clients into the database
-	var result []response.InsertClientModel
+	var duplicates []response.DuplicateClient // To store details of duplicate clients
+
+	// Check for duplicates before starting the transaction
+	for _, client := range clients {
+		var count int64
+		err := database.DBConn.Raw("SELECT COUNT(*) FROM ewallet_web.clients WHERE CID = ? AND Mobile = ? AND First_Name = ? AND Last_Name = ? AND Middle_Name = ? and stats = ?", client.CID, client.Mobile, client.FirstName, client.LastName, client.MiddleName, true).Count(&count).Error
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to check for duplicates", "details": err.Error()})
+		}
+		if count > 0 {
+			duplicate := response.DuplicateClient{
+				CID:        client.CID,
+				Mobile:     client.Mobile,
+				FirstName:  client.FirstName,
+				LastName:   client.LastName,
+				MiddleName: client.MiddleName,
+			}
+			duplicates = append(duplicates, duplicate)
+		}
+	}
+
+	if len(duplicates) > 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Clients uploaded from the file have the same CID, Mobile, FirstName, LastName, and MiddleName.",
+			"data":    duplicates,
+			"error":   true,
+		})
+	}
+
+	var result response.InsertClientModel
+
+	// Start the transaction
 	err = database.DBConn.Transaction(func(tx *gorm.DB) error {
 		for _, client := range clients {
-			// Format time value as string in a format PostgreSQL can handle
 			dobStr := client.DOB.Format("2006-01-02")
-			err := tx.Raw("SELECT * FROM ewallet_web.client_batch_upload(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", dobStr, client.CID, client.Mobile, client.FirstName, client.LastName, client.MiddleName, client.MaidenFName, client.MaidenLName, client.MaidenMName, client.BirthPlace, client.Sex, client.CivilStatus, client.MemberMaidenFName, client.MemberMaidenLName, client.MemberMaidenMName, client.Email, client.InstitutionCode, client.UnitCode, client.CenterCode).Scan(&result).Error
+			cid_input := client.CID
+			mobile_input := client.Mobile
+			fname := client.FirstName
+			lname := client.LastName
+			mname := client.MiddleName
+			mfnam := client.MaidenFName
+			mlname := client.MaidenLName
+			mmname := client.MaidenMName
+			bplace := client.BirthPlace
+			sex_input := client.Sex
+			cs := client.CivilStatus
+			mmfname := client.MemberMaidenFName
+			mmlname := client.MemberMaidenLName
+			mmmnane := client.MemberMaidenMName
+			email_input := client.Email
+			i_code := client.InstitutionCode
+			u_code := client.UnitCode
+			c_code := client.CenterCode
+
+			err := database.DBConn.Raw("SELECT * FROM ewallet_web.client_batch_upload(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", dobStr, cid_input, mobile_input, fname, lname, mname, mfnam, mlname, mmname, bplace, sex_input, cs, mmfname, mmlname, mmmnane, email_input, i_code, u_code, c_code).Scan(&result).Error
 			if err != nil {
 				return err
 			}
 		}
 		return nil
 	})
+
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to insert clients into the database", "details": err.Error()})
 	}
 
-	// Return the inserted clients as part of the response
 	return c.JSON(result)
 }
 
