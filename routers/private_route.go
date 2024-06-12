@@ -25,7 +25,9 @@ func SetupPrivateRoutes(app *fiber.App) {
 
 	v1Endpoint.Get("/download-client-template", clients.DownloadClientTemplate)
 	v1Endpoint.Post("/upload-client", clients.UploadClient)
-	v1Endpoint.Get("/get_client", routes.GetClient)
+	v1Endpoint.Post("/get_pending_client", routes.GetPendingClient)
+	v1Endpoint.Post("/get_approved_client", routes.GetApprovedClient)
+	v1Endpoint.Post("/get_disapproved_client", routes.GetDisapprovedClient)
 	v1Endpoint.Post("/update-client", route.UpdateClient)
 	v1Endpoint.Post("/search-client", rout.SearchClient)
 

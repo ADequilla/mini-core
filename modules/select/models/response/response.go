@@ -25,7 +25,7 @@ type GetClientModel struct {
 	MemberMaidenLName string    `json:"member_maiden_l_name"`
 	MemberMaidenMName string    `json:"member_maiden_m_name"`
 	Email             string    `json:"email"`
-	InstiCode         string    `json:"insti_code"`
+	InstiCode         string    `json:"institution"`
 	UnitCode          string    `json:"unit_code"`
 	CenterCode        string    `json:"center_code"`
 	CreatedDate       time.Time `json:"created_date"`
