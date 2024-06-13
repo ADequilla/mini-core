@@ -43,6 +43,7 @@ func UploadClient(c *fiber.Ctx) error {
 	}
 
 	var duplicates []response.DuplicateClient // To store details of duplicate clients
+	duplicateCount := make(map[string]int)    // To store the count of each duplicate
 
 	// Check for duplicates before starting the transaction
 	for _, client := range clients {
@@ -53,25 +54,26 @@ func UploadClient(c *fiber.Ctx) error {
 		}
 		if count > 0 {
 			duplicate := response.DuplicateClient{
-				CID:        client.CID,
-				Mobile:     client.Mobile,
-				FirstName:  client.FirstName,
-				LastName:   client.LastName,
-				MiddleName: client.MiddleName,
+				CID:    client.CID,
+				Mobile: client.Mobile,
 			}
 			duplicates = append(duplicates, duplicate)
+			duplicateKey := fmt.Sprintf("%s-%s-%s-%s-%s", client.CID, client.Mobile)
+			duplicateCount[duplicateKey]++
 		}
 	}
 
 	if len(duplicates) > 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "Clients uploaded from the file have the same CID, Mobile, FirstName, LastName, and MiddleName.",
-			"data":    duplicates,
-			"error":   true,
+			"message":        "Clients uploaded from the file have duplicate data.",
+			"data":           duplicates,
+			"number of data": len(duplicates),
+			"error":          true,
 		})
 	}
 
 	var result response.InsertClientModel
+	var successfulInserts int
 
 	// Start the transaction
 	err = database.DBConn.Transaction(func(tx *gorm.DB) error {
@@ -100,6 +102,7 @@ func UploadClient(c *fiber.Ctx) error {
 			if err != nil {
 				return err
 			}
+			successfulInserts++
 		}
 		return nil
 	})
@@ -108,7 +111,11 @@ func UploadClient(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to insert clients into the database", "details": err.Error()})
 	}
 
-	return c.JSON(result)
+	return c.JSON(fiber.Map{
+		"message":        "Clients successfully uploaded",
+		"number of data": successfulInserts,
+		"error":          false,
+	})
 }
 
 // Helper function to compare headers with the downloaded file
