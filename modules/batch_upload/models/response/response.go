@@ -15,6 +15,5 @@ type InsertAccountModel struct {
 }
 
 type DuplicateClient struct {
-	CID    string `json:"cid"`
-	Mobile string `json:"mobile"`
+	CID string `json:"cid"`
 }

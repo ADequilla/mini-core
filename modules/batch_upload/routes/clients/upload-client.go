@@ -42,33 +42,35 @@ func UploadClient(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "No data found in the uploaded file"})
 	}
 
-	var duplicates []response.DuplicateClient // To store details of duplicate clients
-	duplicateCount := make(map[string]int)    // To store the count of each duplicate
+	var duplicates []string                // To store details of duplicate client IDs
+	duplicateCount := make(map[string]int) // To store the count of each duplicate
 
 	// Check for duplicates before starting the transaction
 	for _, client := range clients {
 		var count int64
-		err := database.DBConn.Raw("SELECT COUNT(*) FROM ewallet_web.clients WHERE CID = ? AND Mobile = ? AND First_Name = ? AND Last_Name = ? AND Middle_Name = ? and stats = ?", client.CID, client.Mobile, client.FirstName, client.LastName, client.MiddleName, true).Count(&count).Error
+		err := database.DBConn.Raw("SELECT COUNT(*) FROM ewallet_web.clients WHERE CID = ? AND Mobile = ? and stats = ?", client.CID, client.Mobile, "APPROVED").Count(&count).Error
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to check for duplicates", "details": err.Error()})
 		}
 		if count > 0 {
-			duplicate := response.DuplicateClient{
-				CID:    client.CID,
-				Mobile: client.Mobile,
-			}
-			duplicates = append(duplicates, duplicate)
-			duplicateKey := fmt.Sprintf("%s-%s-%s-%s-%s", client.CID, client.Mobile)
-			duplicateCount[duplicateKey]++
+			duplicates = append(duplicates, client.CID)
+			duplicateCount[client.CID]++
 		}
 	}
 
 	if len(duplicates) > 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message":        "Clients uploaded from the file have duplicate data.",
-			"data":           duplicates,
-			"number of data": len(duplicates),
-			"error":          true,
+			"retCode": "200",
+			"message": "Duplicate Newcids",
+			"data": fiber.Map{
+				"DuplicateCount":   len(duplicates),
+				"DuplicateNewCIDs": duplicates,
+				"FileName":         file.Filename,
+				"FirstName":        "Maker",
+				"LastName":         "Alex",
+				"Timestamp":        time.Now().Format("2006-01-02 15:04:05"),
+				"TotalRecords":     0,
+			},
 		})
 	}
 
@@ -112,9 +114,15 @@ func UploadClient(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"message":        "Clients successfully uploaded",
-		"number of data": successfulInserts,
-		"error":          false,
+		"data": fiber.Map{
+			"FileName":     file.Filename,
+			"FirstName":    "Maker",
+			"LastName":     "Alex",
+			"Timestamp":    time.Now().Format("2006-01-02 15:04:05"),
+			"TotalRecords": successfulInserts,
+		},
+		"message": "File Uploaded Successfully",
+		"retCode": "200",
 	})
 }
 

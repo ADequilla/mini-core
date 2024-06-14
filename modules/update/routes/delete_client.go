@@ -7,10 +7,11 @@ import (
 	"mini-core/modules/approve/models/response"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/lib/pq"
 )
 
 func DeleteClients(c *fiber.Ctx) error {
-	var request request.ApproveClients
+	var request []request.ApproveClients
 	var result []response.ApproveClientModel
 
 	if err := utils.BodyParser(c, &request); err != nil {
@@ -21,7 +22,18 @@ func DeleteClients(c *fiber.Ctx) error {
 		})
 	}
 
-	if err := database.DBConn.Raw("SELECT * FROM ewallet_web.delete_client(?,?,?)", request.Id_input, request.Cid_input, request.Mobile_input).Find(&result).Error; err != nil {
+	// Extract the id_input, cid_input, and mobile_input into separate slices
+	var idInput []int64
+	var cidInput []int
+	var mobileInput []string
+
+	for _, r := range request {
+		idInput = append(idInput, int64(r.Id_input))
+		cidInput = append(cidInput, r.Cid_input)
+		mobileInput = append(mobileInput, r.Mobile_input)
+	}
+
+	if err := database.DBConn.Raw("SELECT * FROM ewallet_web.delete_client(?,?,?)", pq.Array(idInput), pq.Array(cidInput), pq.Array(mobileInput)).Find(&result).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": result,
 			"success": false,
